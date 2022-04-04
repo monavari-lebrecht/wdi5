@@ -78,5 +78,8 @@
   "engines": {
     "node": ">=14",
     "npm": ">=7"
+  },
+  "dependencies": {
+    "@ui5/cli": "^2.14.7"
   }
 }
