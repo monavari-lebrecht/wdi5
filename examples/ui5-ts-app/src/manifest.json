@@ -8,6 +8,19 @@
     "description": "{{appDescription}}",
     "applicationVersion": {
       "version": "1.0.0"
+    },
+    "dataSources": {
+      "BackendDataSource": {
+        "uri": "/V2/Northwind/Northwind.svc/",
+        "type": "OData",
+        "settings": {
+          "odataVersion": "2.0"
+        }
+      },
+      "LatestUI5Datasource": {
+        "uri": "",
+        "type": "JSON"
+      }
     }
   },
   "sap.ui": {
@@ -48,6 +61,20 @@
         }
       }
     },
+    "": {
+      "dataSource": "BackendDataSource",
+      "settings": {
+        "useBatch": false,
+        "autoExpandSelect": true,
+        "operationMode": "Server",
+        "groupId": "$direct",
+        "synchronizationMode": "None"
+      }
+    },
+    "LatestUI5": {
+      "type": "sap.ui.model.json.JSONModel",
+      "dataSource": "LatestUI5Datasource"
+    },
     "routing": {
       "config": {
         "routerClass": "sap.m.routing.Router",
@@ -62,12 +89,24 @@
           "pattern": "",
           "name": "main",
           "target": "main"
+        },
+        {
+          "name": "RouteOther",
+          "pattern": "other",
+          "target": ["TargetOther"]
         }
       ],
       "targets": {
         "main": {
           "viewId": "main",
           "viewName": "Main"
+        },
+        "TargetOther": {
+          "viewType": "XML",
+          "transition": "slide",
+          "clearControlAggregation": false,
+          "viewId": "Other",
+          "viewName": "Other"
         }
       }
     }

@@ -3,6 +3,8 @@ import BaseController from "./BaseController"
 import MessageToast from "sap/m/MessageToast"
 import Fragment from "sap/ui/core/Fragment"
 import { jData } from "./jData"
+import Event from "sap/ui/base/Event"
+import CheckBox from "sap/m/CheckBox"
 
 /**
  * @namespace test.Sample.tsapp.controller
@@ -10,6 +12,7 @@ import { jData } from "./jData"
 export default class Main extends BaseController {
     dialog: any
     onInit(): void {
+        this.getOwnerComponent().getModel().read("/Customers('BERGS')")
         const jData: jData = {
             inputValue: "test Input Value !!!",
             buttonText: "Don't press me !!! -> binded",
@@ -19,15 +22,19 @@ export default class Main extends BaseController {
         const testModel = new JSONModel(jData)
         this.getView().setModel(testModel, "testModel")
     }
-    onBoo(oEvent: any): void {
+
+    navFwd(): any {
+        return this.getOwnerComponent().getRouter().navTo("RouteOther")
+    }
+    onBoo(_): void {
         MessageToast.show(`👻`)
     }
 
-    onTest(oEvent: any): void {
+    onTest(oEvent: Event): void {
         this.onBoo(oEvent)
     }
-    onSelect(oEvent: any): void {
-        const selectedProperty: boolean = oEvent.getSource().getProperty("selected")
+    onSelect(oEvent: Event): void {
+        const selectedProperty: boolean = (oEvent.getSource() as CheckBox).getProperty("selected")
         const selectedParameter: boolean = oEvent.getParameter("selected")
         MessageToast.show(`selectedProperty: ${selectedProperty} selectedParameter: ${selectedParameter}`)
     }
