@@ -59,21 +59,21 @@
         "settings": {
           "bundleName": "test.Sample.tsapp.i18n.i18n"
         }
+      },
+      "": {
+        "dataSource": "BackendDataSource",
+        "settings": {
+          "useBatch": false,
+          "autoExpandSelect": true,
+          "operationMode": "Server",
+          "groupId": "$direct",
+          "synchronizationMode": "None"
+        }
+      },
+      "LatestUI5": {
+        "type": "sap.ui.model.json.JSONModel",
+        "dataSource": "LatestUI5Datasource"
       }
-    },
-    "": {
-      "dataSource": "BackendDataSource",
-      "settings": {
-        "useBatch": false,
-        "autoExpandSelect": true,
-        "operationMode": "Server",
-        "groupId": "$direct",
-        "synchronizationMode": "None"
-      }
-    },
-    "LatestUI5": {
-      "type": "sap.ui.model.json.JSONModel",
-      "dataSource": "LatestUI5Datasource"
     },
     "routing": {
       "config": {
@@ -86,9 +86,14 @@
       },
       "routes": [
         {
+          "name": "RouteMain",
           "pattern": "",
-          "name": "main",
-          "target": "main"
+          "target": ["TargetMain"]
+        },
+        {
+          "name": "RouteMainNamed",
+          "pattern": "main",
+          "target": ["TargetMain"]
         },
         {
           "name": "RouteOther",
@@ -97,8 +102,11 @@
         }
       ],
       "targets": {
-        "main": {
-          "viewId": "main",
+        "TargetMain": {
+          "viewType": "XML",
+          "transition": "slide",
+          "clearControlAggregation": false,
+          "viewId": "Main",
           "viewName": "Main"
         },
         "TargetOther": {

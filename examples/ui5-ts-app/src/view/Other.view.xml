@@ -1,4 +1,4 @@
-<mvc:View controllerName="test.Sample.tsapp.controller.Main"
+<mvc:View controllerName="test.Sample.tsapp.controller.Other"
 	xmlns:mvc="sap.ui.core.mvc"
 	displayBlock="true"
 	xmlns="sap.m"

@@ -19,3 +19,10 @@ server:
         extraExts: "xml,json,properties"
         port: 35729
         path: "webapp"
+    - name: ui5-middleware-simpleproxy
+      afterMiddleware: compression
+      mountPath: /V2
+      configuration:
+        baseUri: "https://services.odata.org/V2"
+        strictSSL: false
+        debug: true

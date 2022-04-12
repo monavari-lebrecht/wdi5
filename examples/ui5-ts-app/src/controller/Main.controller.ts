@@ -5,6 +5,7 @@ import Fragment from "sap/ui/core/Fragment"
 import { jData } from "./jData"
 import Event from "sap/ui/base/Event"
 import CheckBox from "sap/m/CheckBox"
+import oDataModel from "sap/ui/model/odata/v2/ODataModel"
 
 /**
  * @namespace test.Sample.tsapp.controller
@@ -12,7 +13,7 @@ import CheckBox from "sap/m/CheckBox"
 export default class Main extends BaseController {
     dialog: any
     onInit(): void {
-        this.getOwnerComponent().getModel().read("/Customers('BERGS')")
+        ;(this.getOwnerComponent().getModel() as oDataModel).read("/Customers('TRAIH')")
         const jData: jData = {
             inputValue: "test Input Value !!!",
             buttonText: "Don't press me !!! -> binded",
@@ -37,6 +38,10 @@ export default class Main extends BaseController {
         const selectedProperty: boolean = (oEvent.getSource() as CheckBox).getProperty("selected")
         const selectedParameter: boolean = oEvent.getParameter("selected")
         MessageToast.show(`selectedProperty: ${selectedProperty} selectedParameter: ${selectedParameter}`)
+    }
+
+    onPress(oEvent: any): void {
+        MessageToast.show(`${oEvent.getSource().getId()} pressed`)
     }
 
     async openDialog(): Promise<void> {
