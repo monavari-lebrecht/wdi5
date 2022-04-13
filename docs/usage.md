@@ -4,6 +4,59 @@ With `wdi5` being a service to WebdriverIO, it provides a superset of `wdio`'s f
 
 At the same time, the `wdi5`-api can be mixed with `wdio`'s api during tests at will - there is no restriction to use either or. See below for many examples, denoting which api is used were.
 
+## Control retrieval
+
+### asControl
+
+The entry point to retrieve a control is always `await browser.asControl(selector)` (for [`selector` as locator, see 👇](#control-selectors)). It transfers the UI control from the browser into the Node.js-scope and make the UI5 control's API available to the test.
+
+Internally, `wdi5` uses [`sap.ui.test.RecordReplay.findDOMElementByControlSelector`](https://ui5.sap.com/#/api/sap.ui.test.RecordReplay%23methods/sap.ui.test.RecordReplay.findDOMElementByControlSelector) to locate the control via a selector.
+
+You can either retrieve the control specifically and subsequently operate on its' UI5 API methods or use the fluent async api to query a specific method:
+
+```js
+// retrieve specfically
+const control = await browser.asControl(selector)
+const text = await control.getText()
+const property = await control.getProperty("...")
+
+// use fluent async api
+const text = await browser.asControl(selector).getText()
+```
+
+### allControls
+
+The alternative [to `browser.asControl`](#asControl) is `await browser.allControls(selector)` to retrieve all controls of a certain type.
+
+```js
+// get all sap.m.Buttons on that view
+const selector = {
+  selector: {
+    controlType: "sap.m.Button",
+    viewName: "test.Sample.view.Main"
+  }
+}
+const buttons = await browser.allControls(selector)
+
+// query one of the buttons
+const textOfButton1 = await buttons[0].getText()
+```
+
+Internally, `wdi5` uses [`sap.ui.test.RecordReplay.findAllDOMElementsByControlSelector`](https://ui5.sap.com/#/api/sap.ui.test.RecordReplay%23methods/sap.ui.test.RecordReplay.findAllDOMElementsByControlSelector) to locate the UI5 controls.
+
+?> the `selector` is used to establish a cache for _all_ controls. So providing [the `forceSelect: true` selector option](#control-selectors), the cache for all controls of that type will be invalidated.
+
+?> there is no [fluent async api](#fluent-async-api) available for `.allControls`.
+
+Switching between `wdi5`- and WebdriverIO-API is possible on any of the controls retrieved by `allControls` just as it is for a single control located via `.asControl`
+
+```js
+const buttons = await browser.allControls(manySelector)
+// $button0 and $button have the WebdriverIO api
+const $button0 = await buttons[0].getWebElement()
+const $button = await browser.asControl(singleSelector).getWebElement()
+```
+
 ## Control selectors
 
 The entry point to retrieve a control is always awaiting the `async` function `browser.asControl(oSelector)`.
@@ -45,16 +98,22 @@ These are the supported selectors from [sap.ui.test.RecordReplay.ControlSelector
 
 |      selector | supported in `wdi5` |
 | ------------: | ------------------- |
-|          `id` | &check;             |
-|    `viewName` | &check;             |
-| `controlType` | &check;             |
+|   `ancestor` | &check;             |
 | `bindingPath` | &check;             |
-|    `I18NText` | -                   |
-|   `Anchestor` | -                   |
-|    `labelFor` | -                   |
+| `controlType` | &check;             |
+|  `descendant` | &check;             |
+|    `I18NText` | &check;             |
+|          `id` | &check;             |
+|`interactable` | &check;             |
+|    `labelFor` | &check;             |
 |  `properties` | &check;             |
+|     `RegEx`   | &check;             |
+|     `sibling` | &check;             |
+|    `viewName` | &check;             |
 
 <!-- prettier-ignore-end -->
+
+?> Please see the [dedicated section on "locators"](locators) for more usage examples for each `locator`/`matcher`!
 
 ```javascript
 const bindingPathSelector = {
@@ -308,7 +367,7 @@ Example: `5-5-17-46-47-screenshot--some-id.png`
 
 ## Logger
 
-For convenient console output, use `wdi5.getLogger()`. It supports the `syslog`-like levels `log`, `info`, `warn` and `error`:
+For convenient console output, use `wdi5.getLogger('tag')`. It supports the `syslog`-like levels `log`, `info`, `warn` and `error`:
 
 ```javascript
 const wdi5 = require("wdi5")
@@ -317,6 +376,12 @@ wdi5.getLogger().log("any", "number", "of", "log", "parts")
 
 The log level is set by the either in `wdio.conf.js` via `wdi5.logLevel` or
 by `wdi5.getLogger().setLoglevel(level = {string} "error"| "verbose" | "silent")`
+
+The 'tag' is an optional parameter and when passed will display logs on the console log with a prefix as follows:
+
+```cmd
+[TAG] any number of log parts
+```
 
 ## Navigation
 

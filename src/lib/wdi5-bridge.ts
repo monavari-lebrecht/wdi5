@@ -1,14 +1,17 @@
 import { resolve } from "path"
 import { writeFile } from "fs/promises"
 import { tmpdir } from "os"
+import * as semver from "semver"
 
 import { wdi5Config, wdi5Selector } from "../types/wdi5.types"
 import { WDI5Control } from "./wdi5-control"
+import { clientSide_injectTools } from "../../client-side-js/injectTools"
 import { clientSide_injectUI5 } from "../../client-side-js/injectUI5"
 import { clientSide_getSelectorForElement } from "../../client-side-js/getSelectorForElement"
 import { clientSide__checkForUI5Ready } from "../../client-side-js/_checkForUI5Ready"
 import { clientSide_getUI5Version } from "../../client-side-js/getUI5Version"
 import { clientSide__navTo } from "../../client-side-js/_navTo"
+import { clientSide_allControls } from "../../client-side-js/allControls"
 
 import { Logger as _Logger } from "./Logger"
 const Logger = _Logger.getInstance()
@@ -99,7 +102,14 @@ export async function start(config: wdi5Config) {
  * attach the sap/ui/test/RecordReplay object to the application context window object as 'bridge'
  */
 export async function injectUI5(config: wdi5Config) {
+    const ui5Version = await browser.getUI5Version()
+    if (semver.lt(ui5Version, "1.60.0")) {
+        // the record replay api is only available since 1.60
+        Logger.error("The ui5 version of your application is to low. Minimum required UI5 version is 1.60")
+        throw new Error("The ui5 version of your application is to low. Minimum required UI5 version is 1.60")
+    }
     const waitForUI5Timeout = config.wdi5.waitForUI5Timeout || 15000
+    await clientSide_injectTools() // helpers for wdi5 browser scope
     // expect boolean
     const result = await clientSide_injectUI5(config, waitForUI5Timeout)
 
@@ -128,14 +138,16 @@ export async function checkForUI5Page() {
  * @returns wdio_ui5_key
  */
 function _createWdioUI5KeyFromSelector(selector: wdi5Selector): string {
-    const orEmpty = (string) => string || "-"
+    const orEmpty = (string) => string || ""
 
     const _selector = selector.selector
-    const wdi5_ui5_key = `${orEmpty(_selector.id)}_${orEmpty(_selector.viewName)}_${orEmpty(
+    const wdi5_ui5_key = `${orEmpty(_selector.id)}${orEmpty(_selector.viewName)}${orEmpty(
         _selector.controlType
-    )}_${orEmpty(JSON.stringify(_selector.bindingPath))}_${orEmpty(JSON.stringify(_selector.I18NText))}_${orEmpty(
-        _selector.labelFor
-    )}_${orEmpty(JSON.stringify(_selector.properties))}`.replace(/[^0-9a-zA-Z]+/, "")
+    )}${orEmpty(JSON.stringify(_selector.bindingPath))}${orEmpty(JSON.stringify(_selector.i18NText))}${orEmpty(
+        JSON.stringify(_selector.descendant)
+    )}${orEmpty(JSON.stringify(_selector.labelFor))}${orEmpty(JSON.stringify(_selector.properties))}${orEmpty(
+        JSON.stringify(_selector.ancestor)
+    )}`.replace(/[^0-9a-zA-Z]+/, "")
 
     return wdi5_ui5_key
 }
@@ -151,14 +163,18 @@ function _verifySelector(wdi5Selector: wdi5Selector) {
             wdi5Selector.selector.hasOwnProperty("viewName") ||
             wdi5Selector.selector.hasOwnProperty("bindingPath") ||
             wdi5Selector.selector.hasOwnProperty("controlType") ||
-            wdi5Selector.selector.hasOwnProperty("I18NText") ||
+            wdi5Selector.selector.hasOwnProperty("i18NText") ||
             wdi5Selector.selector.hasOwnProperty("labelFor") ||
-            wdi5Selector.selector.hasOwnProperty("properties")
+            wdi5Selector.selector.hasOwnProperty("descendant") ||
+            wdi5Selector.selector.hasOwnProperty("ancestor") ||
+            wdi5Selector.selector.hasOwnProperty("properties") ||
+            wdi5Selector.selector.hasOwnProperty("sibling") ||
+            wdi5Selector.selector.hasOwnProperty("interactable")
         ) {
             return true
         }
         Logger.error(
-            "Specified selector is not valid. Please use at least one of: 'id, viewName, bindingPath, controlType, I18NText, labelFor, properties' -> abort"
+            "Specified selector is not valid. Please use at least one of: 'id, viewName, bindingPath, controlType, i18NText, labelFor, ancestor, properties, descendant, sibling, interactable' -> abort"
         )
         return false
     }
@@ -178,8 +194,27 @@ export async function addWdi5Commands() {
         if (!browser._controls?.[internalKey] || wdi5Selector.forceSelect /* always retrieve control */) {
             Logger.info(`creating internal control with id ${internalKey}`)
             wdi5Selector.wdio_ui5_key = internalKey
-            const wdi5Control = await new WDI5Control().init(wdi5Selector, wdi5Selector.forceSelect)
+            const wdi5Control = await new WDI5Control({}).init(wdi5Selector, wdi5Selector.forceSelect)
             browser._controls[internalKey] = wdi5Control
+        } else {
+            Logger.info(`reusing internal control with id ${internalKey}`)
+        }
+        return browser._controls[internalKey]
+    })
+
+    // no fluent API -> no private method
+    browser.addCommand("allControls", async (wdi5Selector: wdi5Selector) => {
+        if (!_verifySelector(wdi5Selector)) {
+            return "ERROR: Specified selector is not valid -> abort"
+        }
+
+        const internalKey = wdi5Selector.wdio_ui5_key || _createWdioUI5KeyFromSelector(wdi5Selector)
+
+        if (!browser._controls?.[internalKey] || wdi5Selector.forceSelect /* always retrieve control */) {
+            wdi5Selector.wdio_ui5_key = internalKey
+            Logger.info(`creating internal controls with id ${internalKey}`)
+            browser._controls[internalKey] = await _allControls(wdi5Selector)
+            return browser._controls[internalKey]
         } else {
             Logger.info(`reusing internal control with id ${internalKey}`)
         }
@@ -218,15 +253,6 @@ export async function addWdi5Commands() {
         }
 
         return _sapUI5Version
-    })
-
-    browser.addCommand("getUI5VersionAsFloat", async () => {
-        if (!_sapUI5Version) {
-            // implicit setter for _sapUI5Version
-            await browser.getUI5Version()
-        }
-
-        return parseFloat(_sapUI5Version)
     })
 
     /**
@@ -291,6 +317,57 @@ export async function addWdi5Commands() {
             Logger.error("ERROR: navigating to another page")
         }
     })
+}
+
+/**
+ * retrieve a DOM element via UI5 locator
+ * @param {sap.ui.test.RecordReplay.ControlSelector} controlSelector
+ * @return {[WebdriverIO.Element | String, [aProtoFunctions]]} UI5 control or error message, array of function names of this control
+ */
+async function _allControls(controlSelector = this._controlSelector) {
+    // check whether we have a "by id regex" locator request
+    if (controlSelector.selector.id && typeof controlSelector.selector.id === "object") {
+        // make it a string for serializing into browser-scope and
+        // further processing there
+        controlSelector.selector.id = controlSelector.selector.id.toString()
+    }
+
+    if (
+        typeof controlSelector.selector.properties?.text === "object" &&
+        controlSelector.selector.properties?.text instanceof RegExp
+    ) {
+        // make it a string for serializing into browser-scope and
+        // further processing there
+        controlSelector.selector.properties.text = controlSelector.selector.properties.text.toString()
+    }
+
+    // pre retrive control information
+    const response = await clientSide_allControls(controlSelector)
+    _writeResultLog(response, "allControls()")
+
+    if (response[0] === "success") {
+        const retrievedElements = response[1]
+        const resultWDi5Elements = []
+
+        // domElement: domElement, id: id, aProtoFunctions
+        for await (const cControl of retrievedElements) {
+            const oOptions = {
+                controlSelector: controlSelector,
+                wdio_ui5_key: controlSelector.wdio_ui5_key,
+                forceSelect: controlSelector.forceSelect,
+                generatedUI5Methods: cControl.aProtoFunctions,
+                webdriverRepresentation: null,
+                webElement: cControl.domElement,
+                domId: cControl.id
+            }
+
+            resultWDi5Elements.push(new WDI5Control(oOptions))
+        }
+
+        return resultWDi5Elements
+    } else {
+        return "[WDI5] Error: fetch multiple elements failed: " + response[1]
+    }
 }
 
 /**
@@ -376,5 +453,20 @@ async function _navTo(sComponentId, sName, oParameters, oComponentTargetInfo, bR
     } else {
         // Guess: was directly returned
         return result
+    }
+}
+
+/**
+ * create log based on the status of result[0]
+ * @param {Array} result
+ * @param {*} functionName
+ */
+function _writeResultLog(result, functionName) {
+    if (result[0] === "error") {
+        Logger.error(`call of ${functionName} failed because of: ${result[1]}`)
+    } else if (result[0] === "success") {
+        Logger.success(`call of function ${functionName} returned: ${JSON.stringify(result[1])}`)
+    } else {
+        Logger.warn(`Unknown status: ${functionName} returned: ${JSON.stringify(result[1])}`)
     }
 }
