@@ -1,4 +1,15 @@
-export const config: WebdriverIO.Config = {
+import type { Options } from "@wdio/types"
+import { join } from "path"
+
+export const config: Options.Testrunner = {
+    wdi5: {
+        screenshotPath: join("test", "__screenshots__"), // [optional] {string}, default: ""
+        screenshotsDisabled: false, // [optional] {boolean}, default: false; if set to true, screenshots won't be taken and not written to file system
+        logLevel: "error", // [optional] error | verbose | silent, default: "error"
+        url: "index.html", // [mandatory] {string} name of your bootstrap html file. If your server autoredirects to a 'domain:port/'-like root url, use empty string ''
+        skipInjectUI5OnStart: false, // [optional] {boolean}, default: false; true when UI5 is not on the start page, you need to later call <wdioUI5service>.injectUI5() manually
+        waitForUI5Timeout: 15000 // [optional] {number}, default: 15000; maximum waiting time in milliseconds while checking for UI5 availability
+    },
     //
     // ====================
     // Runner Configuration
@@ -23,13 +34,13 @@ export const config: WebdriverIO.Config = {
         // for all available options
         tsNodeOpts: {
             transpileOnly: true,
-            project: "test/tsconfig.json"
+            project: "./tsconfig.json"
         }
         // tsconfig-paths is only used if "tsConfigPathsOpts" are provided, if you
         // do please make sure "tsconfig-paths" is installed as dependency
-        //tsConfigPathsOpts: {
-        //    baseUrl: './'
-        //}
+        // tsConfigPathsOpts: {
+        //     baseUrl: './'
+        // }
     },
     //
     // ==================
@@ -47,7 +58,7 @@ export const config: WebdriverIO.Config = {
     // then the current working directory is where your `package.json` resides, so `wdio`
     // will be called from there.
     //
-    specs: ["./test/**/*.ts"],
+    specs: ["./specs/**/*.ts"],
     // Patterns to exclude.
     exclude: [
         // 'path/to/excluded/files'
@@ -96,7 +107,7 @@ export const config: WebdriverIO.Config = {
     // Define all options that are relevant for the WebdriverIO instance here
     //
     // Level of logging verbosity: trace | debug | info | warn | error | silent
-    logLevel: "info",
+    logLevel: "warn",
     //
     // Set specific log levels per logger
     // loggers:
@@ -120,7 +131,7 @@ export const config: WebdriverIO.Config = {
     // with `/`, the base url gets prepended, not including the path portion of your baseUrl.
     // If your `url` parameter starts without a scheme or `/` (like `some/path`), the base url
     // gets prepended directly.
-    baseUrl: "http://localhost:8080/index.html",
+    baseUrl: "http://localhost:8080",
     //
     // Default timeout for all waitFor* commands.
     waitforTimeout: 10000,
@@ -188,10 +199,19 @@ export const config: WebdriverIO.Config = {
      * @param  {String} cid      capability id (e.g 0-0)
      * @param  {[type]} caps     object containing capabilities for session that will be spawn in the worker
      * @param  {[type]} specs    specs to be run in the worker process
-     * @param  {[type]} args     object that will be merged with the main configuration once worker is initialised
+     * @param  {[type]} args     object that will be merged with the main configuration once worker is initialized
      * @param  {[type]} execArgv list of string arguments passed to the worker process
      */
     // onWorkerStart: function (cid, caps, specs, args, execArgv) {
+    // },
+    /**
+     * Gets executed just after a worker process has exited.
+     * @param  {String} cid      capability id (e.g 0-0)
+     * @param  {Number} exitCode 0 - success, 1 - fail
+     * @param  {[type]} specs    specs to be run in the worker process
+     * @param  {Number} retries  number of retries used
+     */
+    // onWorkerEnd: function (cid, exitCode, specs, retries) {
     // },
     /**
      * Gets executed just before initialising the webdriver session and test framework. It allows you
@@ -302,6 +322,6 @@ export const config: WebdriverIO.Config = {
      * @param {String} oldSessionId session ID of the old session
      * @param {String} newSessionId session ID of the new session
      */
-    //onReload: function(oldSessionId, newSessionId) {
-    //}
+    // onReload: function(oldSessionId, newSessionId) {
+    // }
 }
