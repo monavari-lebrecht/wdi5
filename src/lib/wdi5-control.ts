@@ -30,6 +30,7 @@ export class WDI5Control {
     _wdioBridge = <WebdriverIO.Element>{}
     _generatedWdioMethods: Array<string>
     _domId: string
+    _browserInstance: BrowserSync
 
     constructor(oOptions) {
         const {
@@ -39,7 +40,9 @@ export class WDI5Control {
             generatedUI5Methods,
             webdriverRepresentation,
             webElement,
-            domId
+            domId,
+            className,
+            browserInstance
         } = oOptions
 
         this._controlSelector = controlSelector
@@ -49,6 +52,7 @@ export class WDI5Control {
         this._webElement = webElement
         this._webdriverRepresentation = webdriverRepresentation
         this._domId = domId
+        this._browserInstance = browserInstance
 
         if (this._generatedUI5Methods && this._generatedUI5Methods.length > 0) {
             this.attachControlBridge(this._generatedUI5Methods as Array<string>)
@@ -58,6 +62,13 @@ export class WDI5Control {
         }
 
         this.setControlInfo()
+        this._metadata.className = className
+
+        // FIXME: check for webdriver Representation
+        // this._webdriverRepresentation = await $(`//*[@id="${id}"]`)
+        // this._generatedWdioMethods = this._retrieveControlMethods(this._webdriverRepresentation)
+
+        // add metadata
 
         // set the succesful init param
         this._initialisation = true
@@ -157,7 +168,7 @@ export class WDI5Control {
      * @returns
      */
     async renewWebElement(id: string = this._domId) {
-        this._webdriverRepresentation = await $(`//*[@id="${id}"]`)
+        this._webdriverRepresentation = await this._browserInstance.$(`//*[@id="${id}"]`)
         return this._webdriverRepresentation
     }
 

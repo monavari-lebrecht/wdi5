@@ -12,6 +12,7 @@ import { clientSide__checkForUI5Ready } from "../../client-side-js/_checkForUI5R
 import { clientSide_getUI5Version } from "../../client-side-js/getUI5Version"
 import { clientSide__navTo } from "../../client-side-js/_navTo"
 import { clientSide_allControls } from "../../client-side-js/allControls"
+import { clientSide_getControl } from "../../client-side-js/getControl"
 
 import { Logger as _Logger } from "./Logger"
 const Logger = _Logger.getInstance()
@@ -198,7 +199,7 @@ export async function addWdi5Commands() {
         if (!browser._controls?.[internalKey] || wdi5Selector.forceSelect /* always retrieve control */) {
             Logger.info(`creating internal control with id ${internalKey}`)
             wdi5Selector.wdio_ui5_key = internalKey
-            const wdi5Control = await new WDI5Control({}).init(wdi5Selector, wdi5Selector.forceSelect)
+            const wdi5Control = await _getControl(wdi5Selector)
             browser._controls[internalKey] = wdi5Control
         } else {
             Logger.info(`reusing internal control with id ${internalKey}`)
@@ -323,12 +324,7 @@ export async function addWdi5Commands() {
     })
 }
 
-/**
- * retrieve a DOM element via UI5 locator
- * @param {sap.ui.test.RecordReplay.ControlSelector} controlSelector
- * @return {[WebdriverIO.Element | String, [aProtoFunctions]]} UI5 control or error message, array of function names of this control
- */
-async function _allControls(controlSelector = this._controlSelector) {
+function _prepareControlSelector(controlSelector = this._controlSelector) {
     // check whether we have a "by id regex" locator request
     if (controlSelector.selector.id && typeof controlSelector.selector.id === "object") {
         // make it a string for serializing into browser-scope and
@@ -344,6 +340,55 @@ async function _allControls(controlSelector = this._controlSelector) {
         // further processing there
         controlSelector.selector.properties.text = controlSelector.selector.properties.text.toString()
     }
+    return controlSelector
+}
+
+async function _getControl(controlSelector = this._controlSelector) {
+    let result
+    controlSelector = _prepareControlSelector(controlSelector)
+
+    function createControl(fetchedControl, browserIndex) {
+        domElement = fetchedControl[1].domElement
+        id = fetchedControl[1].id
+        aProtoFunctions = fetchedControl[1].aProtoFunctions
+        className = fetchedControl[1].className
+
+        const oOptions = {
+            controlSelector,
+            wdio_ui5_key: controlSelector.wdio_ui5_key,
+            forceSelect: controlSelector.forceSelect,
+            generatedUI5Methods: aProtoFunctions,
+            webdriverRepresentation: null,
+            webElement: domElement,
+            domId: id,
+            className,
+            browserInstance: browser[browserIndex]
+        }
+        return new WDI5Control(oOptions)
+    }
+
+    const _result = await clientSide_getControl(controlSelector)
+    let domElement, id, aProtoFunctions, className
+
+    // support multi remote
+    if (Array.isArray(_result[0])) {
+        result = _result.map((controlSelection, index) => {
+            return createControl(controlSelection, browser.instances[index])
+        })
+    } else {
+        result = createControl(_result, browser)
+    }
+
+    return result
+}
+
+/**
+ * retrieve a DOM element via UI5 locator
+ * @param {sap.ui.test.RecordReplay.ControlSelector} controlSelector
+ * @return {[WebdriverIO.Element | String, [aProtoFunctions]]} UI5 control or error message, array of function names of this control
+ */
+async function _allControls(controlSelector = this._controlSelector) {
+    controlSelector = _prepareControlSelector(controlSelector)
 
     // pre retrive control information
     const response = await clientSide_allControls(controlSelector)
