@@ -102,7 +102,11 @@ export async function start(config: wdi5Config) {
  * attach the sap/ui/test/RecordReplay object to the application context window object as 'bridge'
  */
 export async function injectUI5(config: wdi5Config) {
-    const ui5Version = await browser.getUI5Version()
+    let ui5Version = await browser.getUI5Version()
+    // in a multi remote scenario, we dont get a string, but an array of strings instead. For each remote one.
+    if (Array.isArray(ui5Version) && ui5Version.length > 0) {
+        ui5Version = ui5Version[0]
+    }
     if (semver.lt(ui5Version, "1.60.0")) {
         // the record replay api is only available since 1.60
         Logger.error("The ui5 version of your application is to low. Minimum required UI5 version is 1.60")
